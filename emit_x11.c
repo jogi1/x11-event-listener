@@ -32,7 +32,7 @@ struct ex_data {
 static void
 print_info(Display *dpy, XDeviceInfo *info)
 {
-    printf("%s - %ld - %ld\n", info->name, info->id, info->use);
+    printf("%s - %ld - %d\n", info->name, info->id, info->use);
 }
 
 // staight stolen from xinput
@@ -118,7 +118,7 @@ get_focus_window(struct emit *emit, Display *dpy, int time) {
     char *name;
     char *class;
     int l;
-    char empty = "";
+    char empty[] = "";
 
     int class_hint_res;
     int text_property_res;
@@ -153,8 +153,7 @@ get_focus_window(struct emit *emit, Display *dpy, int time) {
     return l;
 }
 
-static void
-handle_events(void *ptr)
+void *handle_events(void *ptr)
 {
     struct emit *emit;
     struct ex_data *exd;
@@ -203,7 +202,7 @@ handle_events(void *ptr)
 #if DEBUG
 	    printf("key: code(%i) releast(%d) device(%s)\n", key->keycode, event.type == 68 ? 1 : 0, d->name);
 #endif
-	    emit->write_length = snprintf(emit->buffer, sizeof(emit->buffer), "{\"event_type\":\"key\", \"device_name\": \"%s\", \"device_id\": %i,\"release\":%i,\"code\":%i,\"time\":%i}\n", d->name, key->deviceid, event.type == 68? 1 : 0, key->keycode, key->time);
+	    emit->write_length = snprintf(emit->buffer, sizeof(emit->buffer), "{\"event_type\":\"key\", \"device_name\": \"%s\", \"device_id\": %lu,\"release\":%i,\"code\":%i,\"time\":%lu}\n", d->name, key->deviceid, event.type == 68? 1 : 0, key->keycode, key->time);
 	    emit->read_state = rs_send;
 	}
 	if (emit->read_state == rs_send) {
@@ -217,6 +216,7 @@ handle_events(void *ptr)
 		new_actn.sa_flags = 0;
 		sigaction (SIGPIPE, &new_actn, &old_actn);
 		sval = send(emit->connections[i].socket, emit->buffer, emit->write_length, 0);
+		printf("senf %d\n", sval);
 		sigaction (SIGPIPE, &old_actn, NULL);
 		if (sval != emit->write_length) {
 		    emit->connections[i].invalid = 1;
@@ -227,7 +227,7 @@ handle_events(void *ptr)
 	}
     }
     printf("ending x11 thread\n");
-    return;
+    return NULL;
 }
 
 int
@@ -271,6 +271,6 @@ int E_X11_start(struct emit *emit, void *ex_data)
     emit->ex_data = ex_data;
 
     
-    i = pthread_create(&emit->x11, NULL, handle_events, (void *)emit);
+    i = pthread_create(&emit->x11, NULL, &handle_events, (void *)emit);
     return 0;
 }

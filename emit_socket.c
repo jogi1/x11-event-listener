@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <pthread.h>
@@ -10,10 +11,8 @@
 
 #include "emit.h"
 
-#define SOCK_PATH "key_events"
-
 int E_socket_init(struct emit *emit) {
-    struct sockaddr_un local, remote;
+    struct sockaddr_un local;
     int len;
 
     emit->socket = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -23,7 +22,7 @@ int E_socket_init(struct emit *emit) {
     }
 
     local.sun_family = AF_UNIX;
-    strcpy(local.sun_path, SOCK_PATH);
+    strcpy(local.sun_path, emit->socket_path);
     unlink(local.sun_path);
     len = strlen(local.sun_path) + sizeof(local.sun_family);
     if (bind(emit->socket, (struct sockaddr *)&local, len) == -1) {
@@ -39,7 +38,7 @@ int E_socket_init(struct emit *emit) {
     return 0;
 }
 
-void E_socket_handle_connect(void *ptr) {
+void *E_socket_handle_connect(void *ptr) {
     struct emit *emit;
     emit = (struct emit *)ptr;
     int s;
@@ -63,7 +62,7 @@ void E_socket_handle_connect(void *ptr) {
 	    es = (struct emit_socket *)calloc(viable_connections + 1, sizeof(struct emit_socket));
 	    if (es == NULL) {
 		emit->run = 0;
-		return;
+		return NULL;
 	    }
 
 	    for (i=0, viable_connections=0;i<emit->connections_count;i++){
@@ -82,7 +81,7 @@ void E_socket_handle_connect(void *ptr) {
     }
 
     printf("closing socket_handle_connect\n");
-    return;
+    return NULL;
 }
 
 void E_socket_handle_send(void *ptr) {
@@ -105,7 +104,7 @@ void E_socket_handle_send(void *ptr) {
 
 
 int E_socket_start(struct emit *emit) {
-    if (pthread_create(&emit->connect, NULL, E_socket_handle_connect, (void *)emit) != 0) {
+    if (pthread_create(&emit->connect, NULL, &E_socket_handle_connect, (void *)emit) != 0) {
 	printf("could not created connect thread\n");
 	return 1;
     }

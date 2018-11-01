@@ -14,4 +14,5 @@ struct emit {
     struct emit_socket *connections;
     int connections_count;
     pthread_mutex_t socket_lock, buffer_lock;
+    char *socket_path;
 };
