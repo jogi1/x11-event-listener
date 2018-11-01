@@ -216,7 +216,6 @@ void *handle_events(void *ptr)
 		new_actn.sa_flags = 0;
 		sigaction (SIGPIPE, &new_actn, &old_actn);
 		sval = send(emit->connections[i].socket, emit->buffer, emit->write_length, 0);
-		printf("senf %d\n", sval);
 		sigaction (SIGPIPE, &old_actn, NULL);
 		if (sval != emit->write_length) {
 		    emit->connections[i].invalid = 1;
