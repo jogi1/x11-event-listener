@@ -215,7 +215,7 @@ void *handle_events(void *ptr)
 		sigemptyset (&new_actn.sa_mask);
 		new_actn.sa_flags = 0;
 		sigaction (SIGPIPE, &new_actn, &old_actn);
-		sval = send(emit->connections[i].socket, emit->buffer, emit->write_length, 0);
+		sval = send(emit->connections[i].socket, emit->buffer, emit->write_length, MSG_DONTWAIT);
 		sigaction (SIGPIPE, &old_actn, NULL);
 		if (sval != emit->write_length) {
 		    emit->connections[i].invalid = 1;
@@ -225,7 +225,6 @@ void *handle_events(void *ptr)
 	    emit->read_state = rs_write;
 	}
     }
-    printf("ending x11 thread\n");
     return NULL;
 }
 
