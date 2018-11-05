@@ -7,7 +7,7 @@
 #include <pthread.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <signal.h>
+#include <sys/types.h>
 
 #include "emit.h"
 
@@ -18,8 +18,6 @@ static int           button_press_type = INVALID_EVENT_TYPE;
 static int           button_release_type = INVALID_EVENT_TYPE;
 static int           key_press_type = INVALID_EVENT_TYPE;
 static int           key_release_type = INVALID_EVENT_TYPE;
-static int           proximity_in_type = INVALID_EVENT_TYPE;
-static int           proximity_out_type = INVALID_EVENT_TYPE;
 
 
 struct ex_data {
@@ -86,7 +84,6 @@ register_events(Display *dpy, int *num_dev)
 {
     unsigned long screen;
     Window root_win;
-    XDevice *device;
     XDeviceInfo *info;
     XDeviceInfo *cinfo;
     int num_devices;
@@ -165,7 +162,6 @@ void *handle_events(void *ptr)
     char *aname;
     int i, sval;
     int dcount;
-    struct sigaction new_actn, old_actn;
 
     XDeviceInfo *dinfo;
 
@@ -176,7 +172,6 @@ void *handle_events(void *ptr)
     dpy = exd->display;
     dcount = exd->num;
     dinfo = exd->dinfo;
-
 
     while (emit->run) {
 	XNextEvent(dpy, &event);
@@ -211,13 +206,9 @@ void *handle_events(void *ptr)
 		if (emit->connections[i].invalid) {
 		    continue;
 		}
-		new_actn.sa_handler = SIG_IGN;
-		sigemptyset (&new_actn.sa_mask);
-		new_actn.sa_flags = 0;
-		sigaction (SIGPIPE, &new_actn, &old_actn);
-		sval = send(emit->connections[i].socket, emit->buffer, emit->write_length, MSG_DONTWAIT);
-		sigaction (SIGPIPE, &old_actn, NULL);
+		sval = send(emit->connections[i].socket, emit->buffer, emit->write_length, MSG_DONTWAIT | MSG_NOSIGNAL);
 		if (sval != emit->write_length) {
+		    printf("connection invalid\n");
 		    emit->connections[i].invalid = 1;
 		}
 	    }
@@ -263,12 +254,7 @@ E_X11_init(void **ex_data)
 
 int E_X11_start(struct emit *emit, void *ex_data)
 {
-    struct ex_data *exd = (struct ex_data *)ex_data;
-    int i;
-
     emit->ex_data = ex_data;
-
-    
-    i = pthread_create(&emit->x11, NULL, &handle_events, (void *)emit);
+    pthread_create(&emit->x11, NULL, &handle_events, (void *)emit);
     return 0;
 }
