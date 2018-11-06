@@ -122,6 +122,13 @@ get_focus_window(struct emit *emit, Display *dpy, int time) {
     int input_focus_res;
 
     input_focus_res = XGetInputFocus(dpy, &w, &revert_to);
+    if (input_focus_res != 0)
+    {
+#if debug
+    printf("returning from get_focus_window on XGetInputFocus: %d\n", input_focus_res);
+#endif
+	return 0;
+    }
     text_property_res = XFetchName(dpy, w, &name);
     class_hint_res = XGetClassHint(dpy, w, &chint);
 
@@ -137,7 +144,7 @@ get_focus_window(struct emit *emit, Display *dpy, int time) {
 	l = snprintf(emit->buffer, sizeof(emit->buffer), "{\"event_type\":\"focus_change\", \"window_name\": \"%s\", \"window_class\": \"%s\", \"time\": %i, \"window_id\": %lu}\n", name, class, time, w);
     }
 
-#if DEBUG
+#if debug
     printf("name: %s - %lu\n", name, w);
 #endif
     if (class_hint_res != 0) {
