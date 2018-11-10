@@ -26,6 +26,7 @@ int main(int argc, char **argv) {
     emit = (struct emit *)calloc(1, sizeof(struct emit ));
     if (emit == NULL) {
 	printf("could not allocate emit\n");
+	return 0;
     }
 
     emit->socket_path = argv[1];
@@ -33,6 +34,7 @@ int main(int argc, char **argv) {
     rc = E_X11_init(&ex_data);
     if (rc != 0)
     {
+	free(emit);
 	return rc;
     }
 

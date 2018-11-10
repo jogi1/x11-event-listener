@@ -122,9 +122,9 @@ get_focus_window(struct emit *emit, Display *dpy, int time) {
     int input_focus_res;
 
     input_focus_res = XGetInputFocus(dpy, &w, &revert_to);
-    if (input_focus_res != 0)
+    if (input_focus_res != 1)
     {
-#if debug
+#if DEBUG
     printf("returning from get_focus_window on XGetInputFocus: %d\n", input_focus_res);
 #endif
 	return 0;
@@ -164,7 +164,7 @@ void *handle_events(void *ptr)
     XEvent event;
     XDeviceKeyEvent *key;
     XPropertyEvent *pev;
-    XDeviceInfo *d;
+    XDeviceInfo *d, *f;
     Display *dpy;
     char *aname;
     int i, sval;
@@ -195,11 +195,16 @@ void *handle_events(void *ptr)
 	}
 	if (event.type == 67 || event.type == 68) {
 	    key = (XDeviceKeyEvent *)&event;
+	    d = NULL;
 	    for (i=0; i<dcount; i++){
-		d = dinfo + i;
-		if (d->id == key->deviceid) {
+		f = dinfo + i;
+		if (f->id == key->deviceid) {
+		    d = f;
 		    break;
 		}
+	    }
+	    if (i == dcount || d == NULL) {
+		break;
 	    }
 #if DEBUG
 	    printf("key: code(%i) releast(%d) device(%s)\n", key->keycode, event.type == 68 ? 1 : 0, d->name);

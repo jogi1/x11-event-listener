@@ -22,7 +22,7 @@ int E_socket_init(struct emit *emit) {
     }
 
     local.sun_family = AF_UNIX;
-    strcpy(local.sun_path, emit->socket_path);
+    strncpy(local.sun_path, emit->socket_path, sizeof(local.sun_path));
     unlink(local.sun_path);
     len = strlen(local.sun_path) + sizeof(local.sun_family);
     if (bind(emit->socket, (struct sockaddr *)&local, len) == -1) {
@@ -51,7 +51,7 @@ void *E_socket_handle_connect(void *ptr) {
 
     printf("socket connect: started\n");
     while (emit->run) {
-	if ((s = accept(emit->socket, (struct sockaddr *) &remote, &t)) != 0) {
+	if ((s = accept(emit->socket, &remote, &t)) != 0) {
 	    pthread_mutex_lock(&emit->socket_lock);
 	    printf("acceptiong connection\n");
 	    for (i=0, viable_connections=0;i<emit->connections_count;i++){
