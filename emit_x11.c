@@ -107,53 +107,33 @@ register_events(Display *dpy, int *num_dev)
     return(info);
 }
 
-int 
-get_focus_window(struct emit *emit, Display *dpy, int time) {
+int get_focus_window(struct emit *emit, Display *dpy, int time) {
     Window w;
+    int    status;
+    XTextProperty text_prop;
+    char **list;
+    int    num;
     int revert_to;
-    XClassHint chint;
-    char *name;
-    char *class;
     int l;
-    char empty[] = "";
 
-    int class_hint_res;
-    int text_property_res;
-    int input_focus_res;
-
-    input_focus_res = XGetInputFocus(dpy, &w, &revert_to);
-    if (input_focus_res != 1)
+    XGetInputFocus(dpy, &w, &revert_to);
+    status = XGetWMName(dpy, w, &text_prop);
+    if (!status || !text_prop.value || !text_prop.nitems)
     {
-#if DEBUG
-    printf("returning from get_focus_window on XGetInputFocus: %d\n", input_focus_res);
-#endif
 	return 0;
     }
-    text_property_res = XFetchName(dpy, w, &name);
-    class_hint_res = XGetClassHint(dpy, w, &chint);
-
-    if (class_hint_res == 0) {
-	class = empty;
-    } else {
-	class = chint.res_class;
+    status = XmbTextPropertyToTextList(dpy, &text_prop, &list, &num);
+    if (status < Success || !num || !*list)
+    {
+	return 0;
     }
+    XFree(text_prop.value);
+    l = snprintf(emit->buffer, sizeof(emit->buffer), "{\"event_type\":\"focus_change\", \"window_name\": \"%s\", \"time\": %i, \"window_id\": %lu}\n", *list, time, w);
 
-    if (text_property_res == 0 && class_hint_res == 0) {
-	l = snprintf(emit->buffer, sizeof(emit->buffer), "{\"event_type\":\"focus_change\", \"window_name\": \"\", \"window_class\": \"\", \"time\": %i, \"window_id\": -1}\n", time);
-    } else {
-	l = snprintf(emit->buffer, sizeof(emit->buffer), "{\"event_type\":\"focus_change\", \"window_name\": \"%s\", \"window_class\": \"%s\", \"time\": %i, \"window_id\": %lu}\n", name, class, time, w);
-    }
-
-#if debug
-    printf("name: %s - %lu\n", name, w);
+#if DEBUG
+    printf("active window name: %s\n", *list);
 #endif
-    if (class_hint_res != 0) {
-	XFree(chint.res_name);
-	XFree(chint.res_class);
-    }
-    XFree(name);
-
-
+    XFreeStringList(list);
     return l;
 }
 
