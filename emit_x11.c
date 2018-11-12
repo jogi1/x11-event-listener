@@ -115,6 +115,8 @@ int get_focus_window(struct emit *emit, Display *dpy, int time) {
     int    num;
     int revert_to;
     int l;
+    char sanatized_name[2048];
+    char *in, *out;
 
     XGetInputFocus(dpy, &w, &revert_to);
     status = XGetWMName(dpy, w, &text_prop);
@@ -128,7 +130,16 @@ int get_focus_window(struct emit *emit, Display *dpy, int time) {
 	return 0;
     }
     XFree(text_prop.value);
-    l = snprintf(emit->buffer, sizeof(emit->buffer), "{\"event_type\":\"focus_change\", \"window_name\": \"%s\", \"time\": %i, \"window_id\": %lu}\n", *list, time, w);
+    in = *list;
+    out = sanatized_name;
+    while (*in) {
+	if (*in == '"') {
+	    *out++ = '\\';
+	}
+	*out++ = *in++;
+    }
+    *out = 0;
+    l = snprintf(emit->buffer, sizeof(emit->buffer), "{\"event_type\":\"focus_change\", \"window_name\": \"%s\", \"time\": %i, \"window_id\": %lu}\n", sanatized_name, time, w);
 
 #if DEBUG
     printf("active window name: %s\n", *list);
