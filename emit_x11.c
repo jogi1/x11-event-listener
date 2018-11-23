@@ -8,6 +8,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include "xcb/xcb.h"
 
 #include "emit.h"
 
@@ -24,7 +25,66 @@ struct ex_data {
     int num;
     Display *display;
     XDeviceInfo *dinfo;
+    xcb_connection_t *xcb_connection;
 };
+
+int getActiveWindow(struct emit *emit, int time)
+{
+    xcb_get_input_focus_reply_t* focusReply;
+    xcb_get_property_cookie_t cookie;
+    xcb_get_property_reply_t *reply;
+    xcb_connection_t *c;
+    char sanatized_name_in[2048];
+    char sanatized_name_out[2048];
+    int len;
+    char *in, *out;
+    xcb_generic_error_t *e;
+    struct ex_data *exd;
+
+    exd = (struct ex_data *)emit->ex_data;
+
+    c = exd->xcb_connection;
+
+    focusReply = xcb_get_input_focus_reply(c, xcb_get_input_focus(c), NULL);
+    xcb_window_t window = focusReply->focus;
+
+    xcb_atom_t property = XCB_ATOM_WM_NAME;
+    xcb_atom_t type = XCB_ATOM_STRING;
+
+    cookie = xcb_get_property(c, 0, window, property, type, 0, 4096);
+    if ((reply = xcb_get_property_reply(c, cookie, &e))) {
+        len = xcb_get_property_value_length(reply);
+        if (len == 0) {
+            free(reply);
+            return 0;
+        }
+	printf("%d\n", len);
+        snprintf(sanatized_name_in, sizeof(sanatized_name_in), "%.*s\n", len,
+               (char*)xcb_get_property_value(reply));
+    }
+    free(reply);
+
+    in = sanatized_name_in;
+    out = sanatized_name_out;
+    while (*in) {
+	if (*in == '"') {
+	    *out++ = '\\';
+	}
+	if (*in == '\n') {
+	    in++;
+	    continue;
+	}
+	*out++ = *in++;
+    }
+    *out = 0;
+
+    len = snprintf(emit->buffer, sizeof(emit->buffer), "{\"event_type\":\"focus_change\", \"window_name\": \"%s\", \"time\": %i, \"window_id\": %u}\n", sanatized_name_out, time, window);
+#ifdef DEBUG
+    printf("window focus change %s\n", emit->buffer);
+#endif
+
+    return len;
+}
 
 
 static void
@@ -177,7 +237,8 @@ void *handle_events(void *ptr)
 	     pev = (XPropertyEvent *)&event;
 	     aname = XGetAtomName(dpy, pev->atom);
 	     if (pev->atom == 340) {
-		 emit->write_length = get_focus_window(emit,dpy, pev->time);
+		 //emit->write_length = get_focus_window(emit,dpy, pev->time);
+		 emit->write_length = getActiveWindow(emit, pev->time);
 		 if (emit->write_length > 0) {
 		     emit->read_state = rs_send;
 		 }
@@ -235,6 +296,8 @@ E_X11_init(void **ex_data)
     *ex_data = (void *)exd;
 
     printf("exd: %p\n", exd);
+
+    exd->xcb_connection = xcb_connect(NULL, NULL);
 
     exd->display = XOpenDisplay(NULL);
 
