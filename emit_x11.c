@@ -58,7 +58,6 @@ int getActiveWindow(struct emit *emit, int time)
             free(reply);
             return 0;
         }
-	printf("%d\n", len);
         snprintf(sanatized_name_in, sizeof(sanatized_name_in), "%.*s\n", len,
                (char*)xcb_get_property_value(reply));
     }
